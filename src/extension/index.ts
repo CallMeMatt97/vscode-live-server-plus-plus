@@ -14,13 +14,51 @@ export function activate(context: vscode.ExtensionContext) {
   liveServerPlusPlus.useMiddleware(fileSelector, setMIME);
   liveServerPlusPlus.useService(NotificationService, BrowserService, StatusbarService);
 
-  const openServer = vscode.commands.registerCommand(getCmdWithPrefix('open'), () => {
-    liveServerPlusPlus.reloadConfig(getLSPPConfig());
-    liveServerPlusPlus.goLive();
+  // Show friendly notifications and surface errors to the user and logs
+  try {
+    liveServerPlusPlus.onServerError((err: any) => {
+      console.error('LiveServer++ server error:', err);
+      try {
+        vscode.window.showErrorMessage(`Live Server++ error: ${err && err.message ? err.message : err}`);
+      } catch (e) {
+        /* ignore UI errors during activation */
+      }
+    });
+
+    liveServerPlusPlus.onDidGoLive(() => {
+      console.info('LiveServer++: server started');
+      try {
+        vscode.window.showInformationMessage('Live Server++ started');
+      } catch (e) {}
+    });
+
+    liveServerPlusPlus.onDidGoOffline(() => {
+      console.info('LiveServer++: server stopped');
+      try {
+        vscode.window.showInformationMessage('Live Server++ stopped');
+      } catch (e) {}
+    });
+  } catch (e) {
+    console.warn('Failed to attach LSPP event handlers', e);
+  }
+
+  const openServer = vscode.commands.registerCommand(getCmdWithPrefix('open'), async () => {
+    try {
+      liveServerPlusPlus.reloadConfig(getLSPPConfig());
+      await liveServerPlusPlus.goLive();
+    } catch (err) {
+      console.error('Failed to start LiveServer++:', err);
+      vscode.window.showErrorMessage(`Failed to start Live Server++: ${err && err.message ? err.message : err}`);
+    }
   });
 
-  const closeServer = vscode.commands.registerCommand(getCmdWithPrefix('close'), () => {
-    liveServerPlusPlus.shutdown();
+  const closeServer = vscode.commands.registerCommand(getCmdWithPrefix('close'), async () => {
+    try {
+      await liveServerPlusPlus.shutdown();
+    } catch (err) {
+      console.error('Failed to shutdown LiveServer++:', err);
+      vscode.window.showErrorMessage(`Failed to stop Live Server++: ${err && err.message ? err.message : err}`);
+    }
   });
 
   context.subscriptions.push(openServer);

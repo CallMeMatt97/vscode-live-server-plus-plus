@@ -34,7 +34,13 @@ function getCmdWithPrefix(commandName: string) {
 }
 
 function getLSPPConfig(): ILiveServerPlusPlusConfig {
-  const LSPPconfig: ILiveServerPlusPlusConfig = { cwd: workspaceUtils.cwd! };
+  // Fallback when no workspace is open: use first workspace folder or process.cwd()
+  const cwd =
+    workspaceUtils.cwd ||
+    (vscode.workspace && vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]
+      ? vscode.workspace.workspaceFolders[0].uri.fsPath
+      : process.cwd());
+  const LSPPconfig: ILiveServerPlusPlusConfig = { cwd };
   LSPPconfig.port = extensionConfig.port.get();
   LSPPconfig.subpath = extensionConfig.root.get();
   LSPPconfig.debounceTimeout = extensionConfig.timeout.get();
